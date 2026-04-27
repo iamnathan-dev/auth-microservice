@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from 'src/dto/create-user.dto';
 import { LoginUserDto } from 'src/dto/login-user.dto';
 import { AuthUtils } from 'src/utils/auth';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly hashService: HashService,
     private readonly authUtils: AuthUtils,
+    private readonly mailService: EmailService,
   ) {}
 
   async createUser(data: CreateUserDto) {
@@ -42,8 +44,12 @@ export class AuthService {
       },
     });
 
+    // send welcome email
+    await this.mailService.sendWelcomeVerificationEmail(email, name);
+
     return {
       statusCode: HttpStatus.CREATED,
+      message: 'User account created successfully',
       data: this.authUtils.sanitizeUser(user),
     };
   }
@@ -74,6 +80,7 @@ export class AuthService {
 
     return {
       statusCode: HttpStatus.OK,
+      message: 'User logined in successfully',
       access_token,
       refresh_token,
       data: this.authUtils.sanitizeUser(user),
