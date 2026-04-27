@@ -1,0 +1,74 @@
+import { PrismaService } from 'src/services/prisma/prisma.service';
+import jwt from 'jsonwebtoken';
+import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AuthUtils {
+  private readonly REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  sanitizeUser<
+    T extends {
+      password?: unknown;
+      refreshTokenExpiry?: unknown;
+      resetPasswordToken?: unknown;
+      resetPasswordTokenExpiry?: unknown;
+    },
+  >(user: T) {
+    const {
+      password,
+      refreshTokenExpiry,
+      resetPasswordToken,
+      resetPasswordTokenExpiry,
+      ...safeUser
+    } = user;
+    return safeUser;
+  }
+
+  generateAccessToken(userId: string) {
+    const ACCESS_TOKEN_SECRET = this.configService.get<string>(
+      'ACCESS_TOKEN_SECRET',
+    );
+
+    if (!ACCESS_TOKEN_SECRET) {
+      throw new Error(
+        'ACCESS_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    return jwt.sign({ userId }, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+  }
+
+  generateRefreshToken(userId: string) {
+    const REFRESH_TOKEN_SECRET = this.configService.get<string>(
+      'REFRESH_TOKEN_SECRET',
+    );
+
+    if (!REFRESH_TOKEN_SECRET) {
+      throw new Error(
+        'REFRESH_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    return jwt.sign({ userId }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+  }
+
+  async issueTokens(userId: string) {
+    const access_token = this.generateAccessToken(userId);
+    const refresh_token = this.generateRefreshToken(userId);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        tokenHash: refresh_token,
+        expiresAt: new Date(Date.now() + this.REFRESH_TOKEN_TTL_MS),
+        user: { connect: { id: userId } },
+      },
+    });
+
+    return { access_token, refresh_token };
+  }
+}
