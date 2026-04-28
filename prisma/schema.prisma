@@ -29,6 +29,7 @@ model User {
   password                 String
   name                     String
   role                     Role           @default(USER)
+  isEmailVerified          Boolean        @default(false)
   refreshToken             RefreshToken[]
   refreshTokenExpiry       DateTime?
   resetPasswordToken       String?

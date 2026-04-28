@@ -36,7 +36,7 @@ export class AuthService {
     // hash user password
     const hashedPassword = await this.hashService.hashPassword(password);
 
-    const user = await this.prisma.user.create({
+    await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -49,8 +49,8 @@ export class AuthService {
 
     return {
       statusCode: HttpStatus.CREATED,
-      message: 'User account created successfully',
-      data: this.authUtils.sanitizeUser(user),
+      message:
+        'User account created successfully, please check your email to verify your account',
     };
   }
 
@@ -72,6 +72,10 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid login credentials');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException('Email not verified');
     }
 
     const { access_token, refresh_token } = await this.authUtils.issueTokens(
