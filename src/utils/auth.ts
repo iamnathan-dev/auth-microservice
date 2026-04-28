@@ -87,4 +87,24 @@ export class AuthUtils {
       expiresIn: '1d',
     });
   }
+
+  verifyEmailVerificationToken(token: string) {
+    const EMAIL_VERIFICATION_TOKEN_SECRET = this.configService.get<string>(
+      'EMAIL_VERIFICATION_TOKEN_SECRET',
+    );
+
+    if (!EMAIL_VERIFICATION_TOKEN_SECRET) {
+      throw new Error(
+        'EMAIL_VERIFICATION_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    try {
+      jwt.verify(token, EMAIL_VERIFICATION_TOKEN_SECRET) as {
+        userId: string;
+      };
+    } catch (err) {
+      throw new Error('Invalid or expired email verification token');
+    }
+  }
 }

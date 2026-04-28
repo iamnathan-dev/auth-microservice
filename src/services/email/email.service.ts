@@ -32,7 +32,7 @@ export class EmailService {
     });
   }
 
-  async sendWelcomeVerificationEmail(to: string, name: string, token: string) {
+  async sendVerificationEmail(to: string, name: string, token: string) {
     const from = this.config.getOrThrow<string>('MAIL_FROM');
     const verificationUrl = `${this.config.getOrThrow<string>('FRONTEND_URL')}/auth/verify?token=${token}`;
 

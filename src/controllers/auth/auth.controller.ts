@@ -24,4 +24,19 @@ export class AuthController {
   async login(@Body() dto: LoginUserDto) {
     return await this.authService.loginUser(dto);
   }
+
+  @Post('/verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body('token') token: string) {
+    return await this.authService.verifyEmail(token);
+  }
+
+  @Post('/resend-email')
+  @HttpCode(HttpStatus.OK)
+  async resendEmail(@Body('email') email: string, @Body('type') type: string) {
+    if (!email || !type) {
+      throw new BadRequestException('Email and type are required');
+    }
+    return await this.authService.resendEmail(email, type);
+  }
 }

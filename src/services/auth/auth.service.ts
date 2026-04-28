@@ -51,7 +51,7 @@ export class AuthService {
     });
 
     // send welcome email
-    await this.mailService.sendWelcomeVerificationEmail(
+    await this.mailService.sendVerificationEmail(
       email,
       name,
       emailVerificationToken,
@@ -94,10 +94,103 @@ export class AuthService {
 
     return {
       statusCode: HttpStatus.OK,
-      message: 'User logined in successfully',
+      message: 'User logged in successfully',
       access_token,
       refresh_token,
       data: this.authUtils.sanitizeUser(user),
     };
+  }
+
+  async verifyEmail(token: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    // verify token
+    this.authUtils.verifyEmailVerificationToken(token);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationTokenExpiry: null,
+      },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Email verified successfully, you can now login to your account',
+    };
+  }
+
+  async resendEmail(email: string, type: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (type === 'verification') {
+      if (user.isEmailVerified) {
+        throw new BadRequestException('Email is already verified');
+      }
+
+      const emailVerificationToken =
+        this.authUtils.generateEmailVerificationToken(email);
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerificationToken,
+          emailVerificationTokenExpiry: new Date(
+            Date.now() + 24 * 60 * 60 * 1000,
+          ), // 24 hours
+        },
+      });
+
+      await this.mailService.sendVerificationEmail(
+        email,
+        user.name,
+        emailVerificationToken,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Verification email resent successfully',
+      };
+    }
+
+    if (type === 'password-reset') {
+      const passwordResetToken =
+        this.authUtils.generateEmailVerificationToken(email);
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: passwordResetToken,
+          resetPasswordTokenExpiry: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+        },
+      });
+
+      await this.mailService.sendPasswordReset(
+        email,
+        user.name,
+        passwordResetToken,
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Password reset email sent successfully',
+      };
+    }
+
+    throw new BadRequestException('Invalid email resend type');
   }
 }
