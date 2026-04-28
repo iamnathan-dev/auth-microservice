@@ -101,6 +101,78 @@ export class AuthService {
     };
   }
 
+  async logoutUser(userId: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'User logged out successfully',
+    };
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const passwordResetToken = this.authUtils.generatePasswordResetToken(email);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: passwordResetToken,
+        resetPasswordTokenExpiry: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+      },
+    });
+
+    await this.mailService.sendPasswordReset(
+      email,
+      user.name,
+      passwordResetToken,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Password reset email sent successfully',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordTokenExpiry: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    const hashedPassword = await this.hashService.hashPassword(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordTokenExpiry: null,
+      },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message:
+        'Password reset successfully, you can now login with your new password',
+    };
+  }
+
   async verifyEmail(token: string) {
     const user = await this.prisma.user.findFirst({
       where: {
@@ -163,7 +235,7 @@ export class AuthService {
 
       return {
         statusCode: HttpStatus.OK,
-        message: 'Verification email resent successfully',
+        message: 'Verification email sent successfully',
       };
     }
 

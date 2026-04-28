@@ -28,6 +28,10 @@ export class AuthController {
   @Post('/verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Body('token') token: string) {
+    if (!token) {
+      throw new BadRequestException('Verification token is required');
+    }
+
     return await this.authService.verifyEmail(token);
   }
 
@@ -38,5 +42,35 @@ export class AuthController {
       throw new BadRequestException('Email and type are required');
     }
     return await this.authService.resendEmail(email, type);
+  }
+
+  @Post('/request-password-reset')
+  @HttpCode(HttpStatus.OK)
+  async requestPasswordReset(@Body('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+    return await this.authService.requestPasswordReset(email);
+  }
+
+  @Post('/reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body('token') token: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    if (!token || !newPassword) {
+      throw new BadRequestException('Token and new password are required');
+    }
+    return await this.authService.resetPassword(token, newPassword);
+  }
+
+  @Post('/logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body('userId') userId: string) {
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+    return await this.authService.logoutUser(userId);
   }
 }

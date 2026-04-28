@@ -88,6 +88,22 @@ export class AuthUtils {
     });
   }
 
+  generatePasswordResetToken(email: string) {
+    const PASSWORD_RESET_TOKEN_SECRET = this.configService.get<string>(
+      'PASSWORD_RESET_TOKEN_SECRET',
+    );
+
+    if (!PASSWORD_RESET_TOKEN_SECRET) {
+      throw new Error(
+        'PASSWORD_RESET_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    return jwt.sign({ email }, PASSWORD_RESET_TOKEN_SECRET, {
+      expiresIn: '1h',
+    });
+  }
+
   verifyEmailVerificationToken(token: string) {
     const EMAIL_VERIFICATION_TOKEN_SECRET = this.configService.get<string>(
       'EMAIL_VERIFICATION_TOKEN_SECRET',
