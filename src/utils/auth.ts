@@ -71,4 +71,20 @@ export class AuthUtils {
 
     return { access_token, refresh_token };
   }
+
+  generateEmailVerificationToken(userId: string) {
+    const EMAIL_VERIFICATION_TOKEN_SECRET = this.configService.get<string>(
+      'EMAIL_VERIFICATION_TOKEN_SECRET',
+    );
+
+    if (!EMAIL_VERIFICATION_TOKEN_SECRET) {
+      throw new Error(
+        'EMAIL_VERIFICATION_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    return jwt.sign({ userId }, EMAIL_VERIFICATION_TOKEN_SECRET, {
+      expiresIn: '1d',
+    });
+  }
 }

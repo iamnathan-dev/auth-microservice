@@ -35,17 +35,27 @@ export class AuthService {
 
     // hash user password
     const hashedPassword = await this.hashService.hashPassword(password);
+    const emailVerificationToken =
+      this.authUtils.generateEmailVerificationToken(email);
 
     await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
+        emailVerificationToken,
+        emailVerificationTokenExpiry: new Date(
+          Date.now() + 24 * 60 * 60 * 1000,
+        ), // 24 hours
         name,
       },
     });
 
     // send welcome email
-    await this.mailService.sendWelcomeVerificationEmail(email, name);
+    await this.mailService.sendWelcomeVerificationEmail(
+      email,
+      name,
+      emailVerificationToken,
+    );
 
     return {
       statusCode: HttpStatus.CREATED,
