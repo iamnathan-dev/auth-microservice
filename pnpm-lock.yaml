@@ -47,9 +47,6 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
-      jsonwebtoken:
-        specifier: ^9.0.3
-        version: 9.0.3
       nodemailer:
         specifier: ^8.0.7
         version: 8.0.7

@@ -298,4 +298,33 @@ export class AuthService {
       message: 'Password changed successfully',
     };
   }
+
+  async refreshTokens(refreshToken: string) {
+    const tokenRecord = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: refreshToken },
+      include: { user: true },
+    });
+
+    if (!tokenRecord) {
+      throw new NotFoundException('Invalid refresh token');
+    }
+
+    // verify token
+    try {
+      this.authUtils.verifyRefreshToken(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const { access_token, refresh_token } = await this.authUtils.issueTokens(
+      tokenRecord.userId,
+    );
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Tokens refreshed successfully',
+      access_token,
+      refresh_token,
+    };
+  }
 }

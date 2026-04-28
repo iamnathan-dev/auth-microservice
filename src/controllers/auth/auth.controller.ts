@@ -2,15 +2,19 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Put,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from 'src/dto/create-user.dto';
 import { LoginUserDto } from 'src/dto/login-user.dto';
 import { AuthService } from 'src/services/auth/auth.service';
 import { JwtAuthGuard } from './jw-auth.guard';
+import { ChangePasswordDto } from 'src/dto/change-password.dto';
 
 @Controller('api/auth')
 export class AuthController {
@@ -46,6 +50,15 @@ export class AuthController {
     return await this.authService.resendEmail(email, type);
   }
 
+  @Post('/refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshTokens(@Body('refreshToken') refreshToken: string) {
+    if (!refreshToken) {
+      throw new BadRequestException('Refresh token is required');
+    }
+    return await this.authService.refreshTokens(refreshToken);
+  }
+
   @Post('/forget-password')
   @HttpCode(HttpStatus.OK)
   async forgetPassword(@Body('email') email: string) {
@@ -76,29 +89,25 @@ export class AuthController {
     return await this.authService.logoutUser(userId);
   }
 
-  @Post('/change-password')
+  @Put('/change-password')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async changePassword(
-    @Body('currentPassword') currentPassword: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    const userId = (currentPassword as { user?: { userId: string } }).user
-      ?.userId;
+  async changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
+    const userId = req.user.userId;
 
     if (!userId) {
       throw new BadRequestException('User ID is required');
     }
-    if (!currentPassword || !newPassword) {
+    if (!dto.currentPassword || !dto.newPassword) {
       throw new BadRequestException(
         'Current password and new password are required',
       );
     }
 
     return await this.authService.changePassword(
-      userId,
-      currentPassword,
-      newPassword,
+      userId as string,
+      dto.currentPassword,
+      dto.newPassword,
     );
   }
 }

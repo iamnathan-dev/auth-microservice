@@ -18,6 +18,8 @@ export class AuthUtils {
       refreshTokenExpiry?: unknown;
       resetPasswordToken?: unknown;
       resetPasswordTokenExpiry?: unknown;
+      emailVerificationToken?: unknown;
+      emailVerificationTokenExpiry?: unknown;
     },
   >(user: T) {
     const {
@@ -25,6 +27,8 @@ export class AuthUtils {
       refreshTokenExpiry,
       resetPasswordToken,
       resetPasswordTokenExpiry,
+      emailVerificationToken,
+      emailVerificationTokenExpiry,
       ...safeUser
     } = user;
     return safeUser;
@@ -43,7 +47,7 @@ export class AuthUtils {
 
     return this.jwtService.sign(
       { userId },
-      { secret: ACCESS_TOKEN_SECRET, expiresIn: '15m' },
+      { secret: ACCESS_TOKEN_SECRET, expiresIn: '1h' },
     );
   }
 
@@ -131,6 +135,27 @@ export class AuthUtils {
       return (payload as { userId: string }).userId;
     } catch (err) {
       throw new Error('Invalid or expired email verification token');
+    }
+  }
+
+  verifyRefreshToken(token: string) {
+    const REFRESH_TOKEN_SECRET = this.configService.get<string>(
+      'REFRESH_TOKEN_SECRET',
+    );
+
+    if (!REFRESH_TOKEN_SECRET) {
+      throw new Error(
+        'REFRESH_TOKEN_SECRET is not defined in environment variables',
+      );
+    }
+
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: REFRESH_TOKEN_SECRET,
+      });
+      return (payload as { userId: string }).userId;
+    } catch (err) {
+      throw new Error('Invalid or expired refresh token');
     }
   }
 }
