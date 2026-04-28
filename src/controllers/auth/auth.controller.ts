@@ -5,10 +5,12 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from 'src/dto/create-user.dto';
 import { LoginUserDto } from 'src/dto/login-user.dto';
 import { AuthService } from 'src/services/auth/auth.service';
+import { JwtAuthGuard } from './jw-auth.guard';
 
 @Controller('api/auth')
 export class AuthController {
@@ -44,13 +46,13 @@ export class AuthController {
     return await this.authService.resendEmail(email, type);
   }
 
-  @Post('/request-password-reset')
+  @Post('/forget-password')
   @HttpCode(HttpStatus.OK)
-  async requestPasswordReset(@Body('email') email: string) {
+  async forgetPassword(@Body('email') email: string) {
     if (!email) {
       throw new BadRequestException('Email is required');
     }
-    return await this.authService.requestPasswordReset(email);
+    return await this.authService.forgetPassword(email);
   }
 
   @Post('/reset-password')
@@ -72,5 +74,31 @@ export class AuthController {
       throw new BadRequestException('User ID is required');
     }
     return await this.authService.logoutUser(userId);
+  }
+
+  @Post('/change-password')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Body('currentPassword') currentPassword: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    const userId = (currentPassword as { user?: { userId: string } }).user
+      ?.userId;
+
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+    if (!currentPassword || !newPassword) {
+      throw new BadRequestException(
+        'Current password and new password are required',
+      );
+    }
+
+    return await this.authService.changePassword(
+      userId,
+      currentPassword,
+      newPassword,
+    );
   }
 }

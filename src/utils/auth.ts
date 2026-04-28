@@ -1,5 +1,5 @@
 import { PrismaService } from 'src/services/prisma/prisma.service';
-import jwt from 'jsonwebtoken';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Injectable } from '@nestjs/common';
 
@@ -9,6 +9,7 @@ export class AuthUtils {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) {}
 
   sanitizeUser<
@@ -40,7 +41,10 @@ export class AuthUtils {
       );
     }
 
-    return jwt.sign({ userId }, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+    return this.jwtService.sign(
+      { userId },
+      { secret: ACCESS_TOKEN_SECRET, expiresIn: '15m' },
+    );
   }
 
   generateRefreshToken(userId: string) {
@@ -54,7 +58,10 @@ export class AuthUtils {
       );
     }
 
-    return jwt.sign({ userId }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+    return this.jwtService.sign(
+      { userId },
+      { secret: REFRESH_TOKEN_SECRET, expiresIn: '7d' },
+    );
   }
 
   async issueTokens(userId: string) {
@@ -83,9 +90,10 @@ export class AuthUtils {
       );
     }
 
-    return jwt.sign({ userId }, EMAIL_VERIFICATION_TOKEN_SECRET, {
-      expiresIn: '1d',
-    });
+    return this.jwtService.sign(
+      { userId },
+      { secret: EMAIL_VERIFICATION_TOKEN_SECRET, expiresIn: '1d' },
+    );
   }
 
   generatePasswordResetToken(email: string) {
@@ -99,9 +107,10 @@ export class AuthUtils {
       );
     }
 
-    return jwt.sign({ email }, PASSWORD_RESET_TOKEN_SECRET, {
-      expiresIn: '1h',
-    });
+    return this.jwtService.sign(
+      { email },
+      { secret: PASSWORD_RESET_TOKEN_SECRET, expiresIn: '1h' },
+    );
   }
 
   verifyEmailVerificationToken(token: string) {
@@ -116,9 +125,10 @@ export class AuthUtils {
     }
 
     try {
-      jwt.verify(token, EMAIL_VERIFICATION_TOKEN_SECRET) as {
-        userId: string;
-      };
+      const payload = this.jwtService.verify(token, {
+        secret: EMAIL_VERIFICATION_TOKEN_SECRET,
+      });
+      return (payload as { userId: string }).userId;
     } catch (err) {
       throw new Error('Invalid or expired email verification token');
     }

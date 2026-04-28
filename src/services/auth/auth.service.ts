@@ -112,7 +112,7 @@ export class AuthService {
     };
   }
 
-  async requestPasswordReset(email: string) {
+  async forgetPassword(email: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user) {
@@ -264,5 +264,38 @@ export class AuthService {
     }
 
     throw new BadRequestException('Invalid email resend type');
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isCurrentPasswordValid = await this.hashService.verifyHashedPassword(
+      user.password,
+      currentPassword,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashedNewPassword = await this.hashService.hashPassword(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedNewPassword },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Password changed successfully',
+    };
   }
 }
