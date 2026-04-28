@@ -9,8 +9,7 @@ async function bootstrap() {
 
   const server = app.getHttpServer();
   const router = server._events.request._router;
-  console.log(router?.stack.map((r: any) => r.route).filter(Boolean));
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();
